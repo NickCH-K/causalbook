@@ -1,0 +1,14 @@
+Name,Class,Label,Values
+address,character,Natural Village,
+village,character,Administrative Village,
+takeup_survey,numeric,"Insurance Take-up: 1=yes, 0=no",Num: 0 to 1
+age,numeric,Household Characteristics - Age,Num: 18 to 86
+agpop,numeric,Household Characteristics - Household Size,Num: 1 to 19
+ricearea_2010,numeric,Area of Rice Production,Num: 0.4 to 650
+disaster_prob,numeric,Perceived Probability of Disasters Next Year,Num: 0 to 100
+male,numeric,"Household Characteristics: Gender of Household Head, 1=male, 0=female",Num: 0 to 1
+default,numeric,"Default Option, 1=Buy, 0=Not Buy",Num: 0 to 1
+intensive,numeric,"Assigned to Intensive Sessions, 1=yes, 0=no",Num: 0 to 1
+risk_averse,numeric,Risk Aversion,Num: 0 to 1
+literacy,numeric,"1=literate, 0=illiterate",Num: 0 to 1
+pre_takeup_rate,numeric,NULL,Num: 0 to 1
