@@ -3,8 +3,9 @@
   library(extrafont)
   library(ggpubr)
   library(cowplot)
+  library(fixest)
+  library(modelsummary)
 }
-
 
 set.seed(1000)
 tb <- tibble(W = rnorm(100), Z = sample(0:1, 100, replace = TRUE)) %>%
@@ -156,3 +157,30 @@ p6 <- ggplot(tb %>% group_by(Z) %>% slice(1), aes(x = mean_X, y = mean_Y)) +
 
 plot_grid(p1,p2,p3,p4,p5,p6, ncol = 2)
 ggsave('iv_anim.pdf',width = 7, height = 9.5, units = 'in', device = cairo_pdf)
+
+
+# Cai example
+d <- read_csv('Cai_2015.csv')
+
+# Include just the outcome and controls first
+# then endogenous ~ instrument in the second part
+# And cluster on address
+m <- feols(takeup_survey ~ male + age + agpop + ricearea_2010 +
+             literacy + intensive + risk_averse + disaster_prob +
+             factor(village)
+           | pre_takeup_rate ~ default, 
+           cluster = ~address,
+           data = d)
+
+# Show the first and second stage, omitting all
+# the controls for ease of visibility
+knitr::opts_current$set(label = 'instrumentalvariables-cai')
+msummary(list('First Stage' = m$iv_first_stage,
+              'Second Stage' = m),
+         coef_map = c(default = 'First Round Default',
+                      fit_pre_takeup_rate = 'Friends Purchase Behavior'),         
+         stars = TRUE,
+         gof_omit = 'Within|Pseudo|AIC|BIC|Lik',
+         output = 'cai_2015_regression.tex',
+         title = 'Instrumental Variables Regression from Cai, de Janvry, and Sadoulet (2015)',
+         notes = 'Controls for gender, age, agricultural proportion, farming area, literacy, intensiveness of assigned treatment, risk aversion, perceived disaster probability, and village excluded from table.')
