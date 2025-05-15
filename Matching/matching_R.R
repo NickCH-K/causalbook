@@ -7,6 +7,7 @@
   library(cowplot)
   library(Matching)
   library(vtable)
+  library(haven)
 }
 
 ## UCI Credit card example
@@ -14,7 +15,7 @@ uci <- read_csv('UCI_Credit_Card.csv') %>%
   mutate(LateSept = PAY_0 > 0,
          LateApril = PAY_6 > 0,
          BillApril = BILL_AMT6/1000) %>%
-  select(LateSept,LateApril,BillApril, AGE)
+  dplyr::select(LateSept,LateApril,BillApril, AGE)
 
 
 uci[10305,]
@@ -79,7 +80,7 @@ sub <- sub %>%
 ggplot(sub, aes(x = BillApril, y = yjit, shape = LateApril)) + 
   geom_point() + 
   geom_hline(aes(yintercept = .5), linetype = 'dashed') +
-  geom_text(aes(x = BillApril, y = yjit, label = id), data = sub %>% filter(id %in% c(10305, 27281, 27719)),
+  geom_text(aes(x = BillApril, y = yjit, label = scales::number(id, big.mark = ',')), data = sub %>% filter(id %in% c(10305, 27281, 27719)),
             family = 'Garamond',
             size = 13/.pt, 
             hjust = -.2) +
@@ -101,7 +102,7 @@ p1 <- ggplot(sub, aes(x = BillApril, y = yjit, shape = LateApril)) +
   geom_point() + 
   gghighlight(id %in% c(10305, 27281), label_key = blank) +
   geom_hline(aes(yintercept = .5), linetype = 'dashed') +
-  geom_text(aes(x = BillApril, y = yjit, label = id), data = sub %>% filter(id %in% c(10305, 27281)),
+  geom_text(aes(x = BillApril, y = yjit, label = scales::number(id, big.mark = ',')), data = sub %>% filter(id %in% c(10305, 27281)),
             family = 'Garamond',
             size = 13/.pt, 
             hjust = -.2) +
@@ -123,14 +124,14 @@ p2 <- ggplot(sub %>% filter(!LateApril | id == 10305), aes(x = BillApril, y = yj
   geom_point() +
   gghighlight(wt > 0, label_key = blank) +
   geom_hline(aes(yintercept = .5), linetype = 'dashed') +
-  geom_text(aes(x = BillApril, y = yjit, label = id), data = sub %>% filter(id %in% c(10305)),
+  geom_text(aes(x = BillApril, y = yjit, label = scales::number(id, big.mark = ',')), data = sub %>% filter(id %in% c(10305)),
             family = 'Garamond',
             size = 13/.pt, 
             hjust = -.4) +
   labs(x = 'Bill in April',shape = 'Late in April',
        title = '(b) Kernel Matching') +
-  guides(size = FALSE,
-         shape = FALSE) +
+  guides(size = 'none',
+         shape = 'none') +
   scale_shape_manual(values = c(1,19), labels = c('Not Late\nin April','Late in\nApril')) + 
   scale_y_continuous(breaks = c(0,1), labels = c('Not Late in\nSeptember','Late in\nSeptember')) + 
   scale_x_continuous(labels = function(x) paste0('NT$',scales::number(x, accuracy = 1, big.mark = ',')),
@@ -141,7 +142,7 @@ p2 <- ggplot(sub %>% filter(!LateApril | id == 10305), aes(x = BillApril, y = yj
         axis.title.y = element_blank(),
         axis.ticks.y = element_blank())
 plot_grid(p1,p2)
-ggsave('select_vs_kernel.pdf', width = 8, height = 3.5,device=cairo_pdf)
+ggsave('select_vs_kernel.pdf', width = 7.5, height = 3.5,device=cairo_pdf)
 
 
 sub2 <- uci %>%
@@ -159,7 +160,7 @@ sub2 <- sub2 %>%
 pts <- sub2 %>%
   filter(id %in% c(21733, 11874))
 pts %>%
-  select(BA_std, Age_std) %>%
+  dplyr::select(BA_std, Age_std) %>%
   summarize(BA = BA_std - first(BA_std), AS = Age_std - first(Age_std))
 ggplot(sub2, aes(x = BA_std, y = Age_std, shape = LateApril, size = id %in% c(21733, 11874))) + 
   geom_point() +
@@ -193,7 +194,7 @@ ggplot(data.frame(x = (-150:150)/100), aes(x = x)) +
   labs(x = 'Difference', y = 'Kernel Weight')  +
   theme_pubr() + 
   theme(text         = element_text(size = 13, family="Garamond"))
-ggsave('epan.pdf', width = 6, height = 5,device=cairo_pdf)
+ggsave('epan.pdf', width = 6, height = 3,device=cairo_pdf)
 
 
 # Bad matching distribution
@@ -219,7 +220,7 @@ p2 <- tib2 %>%
            size = 13/.pt, label = paste0('Mean ',scales::number(mean(tib$x), accuracy = .01))) +
   labs(x = 'Matching Variable X',
        y = 'Density',
-       title = '(a) Distribution of X in Control Group') +
+       title = '(b) Distribution of X in Control Group') +
   theme_pubr() + 
   theme(text         = element_text(size = 13, family="Garamond"),
         axis.title.x = element_text(size = 13, family="Garamond"))
@@ -312,23 +313,23 @@ ggsave('trimmed_common_support.pdf', width = 6, height = 5,device=cairo_pdf)
 
 p1 <- ggplot(br %>% filter(ps >= .02 & ps < .98), aes(x = blackpercent, linetype = factor(leg_black), weight = ipw)) + 
   geom_density(size = 1) + 
-  guides(linetype = FALSE) + 
-  annotate(geom = 'text', family = 'Garamond', size = 13/.pt,
+  guides(linetype = 'none') + 
+  ggplot2::annotate(geom = 'text', family = 'Garamond', size = 13/.pt,
            x = .2, y = 1.3, label = 'Non-Black') +
-  annotate(geom = 'text', family = 'Garamond', size = 13/.pt,
+  ggplot2::annotate(geom = 'text', family = 'Garamond', size = 13/.pt,
            x = .38, y = 3, label = 'Black Legislator') +
   labs(x = 'Propensity Score',
        y = 'Density',
-       title = '(a) Black Percentage after Weighting') +
+       title = '(a) Percentage Black after Weighting') +
   theme_pubr() + 
   theme(text         = element_text(size = 13, family="Garamond"),
         axis.title.x = element_text(size = 13, family="Garamond"))
 p2 <- ggplot(br %>% filter(ps >= .02 & ps < .98), aes(x = ps, linetype = factor(leg_black), weight = ipw)) + 
   geom_density(size = 1) + 
-  guides(linetype = FALSE) + 
-  annotate(geom = 'text', family = 'Garamond', size = 13/.pt,
+  guides(linetype = 'none') + 
+  ggplot2::annotate(geom = 'text', family = 'Garamond', size = 13/.pt,
            x = .3, y = 5, label = 'Non-Black Legislator') +
-  annotate(geom = 'text', family = 'Garamond', size = 13/.pt,
+  ggplot2::annotate(geom = 'text', family = 'Garamond', size = 13/.pt,
            x = .35, y = 2, label = 'Black Legislator') +
   labs(x = 'Propensity Score',
        y = 'Density',
