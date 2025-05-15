@@ -8,6 +8,7 @@
   library(rdrobust)
   library(fixest)
   library(broom)
+  library(ggtext)
 }
 
 # Animationggsave('rdd_poly.pdf',width = 7, height = 5, units = 'in', device = cairo_pdf)
@@ -59,8 +60,8 @@ p3 <- ggplot(tb, aes(x= x, y = y, group = x > .5)) +
 p4 <- ggplot(tb, aes(x= x, y = y, group = x > .5)) +
   geom_point() +
   annotate(geom = 'segment', x = .5, xend = .5,
-           y = tb %>% filter(x <= .5) %>% filter(x == max(x)) %>% pull(pred),
-           yend = tb %>% filter(x > .5 & x <= .55) %>% pull(pred) %>% mean(),
+           y = tb %>% dplyr::filter(x <= .5) %>% dplyr::filter(x == max(x)) %>% pull(pred),
+           yend = tb %>% dplyr::filter(x > .5 & x <= .55) %>% pull(pred) %>% mean(),
            size = 1.5, linetype = 'solid') +
   gghighlight(abs(x - .5) < .05) +
   geom_smooth(aes(x = x, y = pred), se = FALSE, color = 'black', size = 1.5) +
@@ -102,6 +103,9 @@ plot_grid(p1,p2)
 
 ggsave('treatment_share.pdf',width = 7, height = 3.5, units = 'in', device = cairo_pdf)
 
+tib2 <- tibble(x = (-2500:0)/2500) %>%
+  mutate(treatrate = (x+x^2+x^3)/2 + .5 + .5*(x > -.5))
+
 ggplot(tib2, aes(x = x, y = treatrate)) + geom_line()+
   labs(x = 'Running Variable', y ='Proportion Treated') +
   scale_y_continuous(labels = function(x) scales::percent(x, accuracy = 1)) +
@@ -114,7 +118,7 @@ ggsave('fuzzy_treat.pdf', width = 6, height = 5, units = 'in', device = cairo_pd
 vet <- read_csv('fetter_mortgages.csv')
 
 vet <- vet %>%
-  filter(abs(qob_minus_kw) < 12) %>%
+  dplyr::filter(abs(qob_minus_kw) < 12) %>%
   group_by(qob_minus_kw) %>%
   summarize(mean_treat = mean(vet_wwko), 
             mean_out = mean(home_ownership))
@@ -126,9 +130,11 @@ p1 <- ggplot(vet, aes(x = qob_minus_kw, y = mean_out, group = qob_minus_kw > 0))
   scale_y_continuous(labels = function(x) scales::percent(x, accuracy = 1)) +
   labs(x = 'Birth Months Relative to Eligibility',
        y = 'Home Ownership Rates',
-       title = '(a) RD for Home Ownership') +
+       title = '(b) RD for Home Ownership',
+       caption = 'Copyright American Economic Association. Reproduced with\npermission of the American Economic Journal: Economic Policy.') +
   theme_pubr() +
-  theme(text = element_text(family = 'Garamond', size = 14))
+  theme(text = element_text(family = 'Garamond', size = 14),
+        plot.caption = element_text(size = 7.5, hjust = 0))
 p2 <- ggplot(vet, aes(x = qob_minus_kw, y = mean_treat, group = qob_minus_kw > 0)) + 
   geom_point(size = 2) + 
   geom_smooth(method = 'lm', se = FALSE, color = 'black') + 
@@ -136,9 +142,11 @@ p2 <- ggplot(vet, aes(x = qob_minus_kw, y = mean_treat, group = qob_minus_kw > 0
   scale_y_continuous(labels = function(x) scales::percent(x, accuracy = 1)) +
   labs(x = 'Birth Months Relative to Eligibility',
        y = 'Eligible Veteran Rates',
-       title = '(b) RD for Eligible Vet Status') +
+       title = '(a) RD for Eligible Vet Status',
+       caption = ' \n ') +
   theme_pubr() +
-  theme(text = element_text(family = 'Garamond', size = 14))
+  theme(text = element_text(family = 'Garamond', size = 14),
+        plot.caption = element_text(size = 7.5, hjust = 0))
 
 plot_grid(p2,p1)
 ggsave('fetter.pdf',width = 7, height = 3.5, units = 'in', device = cairo_pdf)
@@ -189,12 +197,12 @@ for (b in 4:16) {
                qob_minus_kw*vet_wwko ~ # Instrument our standard RDD
                qob_minus_kw*above, # with being above the cutoff
              se = 'hetero', # heteroskedasticity-robust SEs
-             data = vet %>% filter(abs(qob_minus_kw) < b)) 
+             data = vet %>% dplyr::filter(abs(qob_minus_kw) < b)) 
   ms <- tidy(m)
   res <- res %>%
     add_row(bw = b,
-            b = ms %>% filter(term == 'fit_vet_wwko') %>% pull(estimate),
-            se = ms %>% filter(term == 'fit_vet_wwko') %>% pull(std.error))
+            b = ms %>% dplyr::filter(term == 'fit_vet_wwko') %>% pull(estimate),
+            se = ms %>% dplyr::filter(term == 'fit_vet_wwko') %>% pull(std.error))
 }
 
 ggplot(res, aes(x = bw, y = b)) + 
@@ -235,6 +243,27 @@ x, y
 10.041322314049589, 0.5635359116022101
 ') %>%
   mutate(x = round(x))
+
+element_custom <- function() {
+  structure(list(), class = c("element_custom", "element_text"))
+}
+
+element_grob.element_custom <- function(element, label="", ...)  {
+  disect <- strsplit(label, "\\n")[[1]]
+  labels <- lapply(disect, function(x) tryCatch(parse(text=x), 
+                                                error = function(e) x))
+  hl <-  unit(rep(1, length(labels)), 'strheight', data=labels) + unit(0.1,"line")
+  yl <- c(list(unit(0,"line")), 
+          lapply(seq_along(labels[-length(labels)]), function(ii) sum(hl[1:ii])))
+  
+  cl <- do.call(gList, Map(function(label, ii) 
+    textGrob(label, y = unit(1,"npc")-yl[[ii]], hjust=0, x=0, vjust=1), 
+    label = labels, ii = seq_along(labels)))
+  
+  gTree(children = cl, cl="sl", heights = hl, gp=gpar(col="grey50",fontsize=8))
+}
+
+heightDetails.sl <- function(x) sum(x$heights)
 ggplot(bat, aes(x = x, y = y)) +
   geom_line(size = 1.5) +
   geom_vline(aes(xintercept = 0), linetype = 'dashed') +
@@ -242,9 +271,12 @@ ggplot(bat, aes(x = x, y = y)) +
   geom_vline(aes(xintercept = 1), linetype = 'dashed') +
   scale_x_continuous(breaks = c(-10, -5, -2, -1, 0, 1, 2, 5, 10)) +
   labs(x = 'Years to Pension Eligibility',
-       y = 'Proportion Retired') +
+       y = 'Proportion Retired',
+       caption = "Copyright American Economic Association.
+       Reproduced with permission of the *American Economic Review.*") +
   theme_pubr() +
-  theme(text         = element_text(size = 13, family="Garamond"))
+  theme(text         = element_text(size = 13, family="Garamond"),
+        plot.caption = element_markdown())
 ggsave('battistin.pdf', width = 6, height = 5,device=cairo_pdf)
 
 # Basic linear RDD
@@ -267,10 +299,16 @@ ggplot(tib, aes(x = X, y = Y, group = X > .5)) +
         axis.ticks.y = element_blank())
 ggsave('linear_rdd.pdf', width = 6, height = 5,device=cairo_pdf)
 
+set.seed(1000)
+tib <- tibble(X = runif(200)) %>%
+  mutate(Y = rnorm(200)*.05 + case_when(
+    X < .5 ~ -2*X + 4*X^2,
+    TRUE ~ .4-X + X^2
+  ))
 ggplot(tib, aes(x = X, y = Y, group = X > .5)) +
   geom_point() +
   geom_smooth(size = 1, se = FALSE, method = 'lm', color = 'black', linetype = 'dashed') +
-  geom_smooth(size = 1, se = FALSE, method = 'lm', color = 'black', data = tib %>% filter(abs(X - .5) <= .1))+
+  geom_smooth(size = 1, se = FALSE, method = 'lm', color = 'black', data = tib %>% dplyr::filter(abs(X - .5) <= .1))+
   geom_vline(aes(xintercept = .5), linetype = 'dashed') +
   scale_x_continuous(breaks = .5, labels = 'Cutoff')+
   labs(x = 'Running Variable',
@@ -321,7 +359,7 @@ p3 <- ggplot(tib, aes(x = X, y = Y, group = X > .5)) +
         axis.ticks.y = element_blank())
 p4 <- ggplot(tib, aes(x = X, y = Y, group = X > .5)) +
   geom_point(alpha = .05) +
-  geom_smooth(size = 1, se = FALSE, method = 'lm', color = 'black', data = tib %>% filter(abs(X - .5) <= .1))+
+  geom_smooth(size = 1, se = FALSE, method = 'lm', color = 'black', data = tib %>% dplyr::filter(abs(X - .5) <= .1))+
   geom_vline(aes(xintercept = .5), linetype = 'dashed') +
   scale_x_continuous(breaks = .5, labels = 'Cutoff')+
   labs(x = 'Running Variable',
@@ -350,7 +388,7 @@ fgen <- function(n) {
 lm(fgen(2), data = tib)
 lm(fgen(6), data = tib)
 
-lm(Y ~X_c*above, data = tib %>% filter(abs(X_c) < .1))
+lm(Y ~X_c*above, data = tib %>% dplyr::filter(abs(X_c) < .1))
 
 ## Kernel
 tib <- tibble(x = c(0,.25,.5,.75,1),
@@ -360,7 +398,7 @@ ggplot(tib, aes(x = x, y = y)) + geom_path() +
   scale_x_continuous(breaks = c(.25,.5,.75), labels = c('- Bandwidth','Central Value','+ Bandwidth')) +
   theme_pubr() +
   theme(text = element_text(family = 'Garamond', size = 14))
-ggsave('kernel.pdf', width = 6, height = 5,device=cairo_pdf)
+ggsave('kernel.pdf', width = 6, height = 3,device=cairo_pdf)
 
 ## Kernel RDD
 set.seed(1000)
@@ -373,7 +411,7 @@ tib <- tibble(X = runif(200)) %>%
 ggplot(tib, aes(x = X, y = Y, group = X > .5)) +
   geom_point(alpha = .15) +
   geom_line(aes(x = X, y = meanY, group = X > .5),size = 1, data = tib %>%
-              filter(abs(X - .5) <= .1) %>%
+              dplyr::filter(abs(X - .5) <= .1) %>%
               group_by(X > .5) %>%
               mutate(meanY = mean(Y)))+
   geom_vline(aes(xintercept = .5), linetype = 'dashed') +
@@ -489,7 +527,7 @@ msummary(list('Quadratic' = m,
 library(tidyverse); library(rddensity); library(rdrobust)
 
 gt <- read_csv('Government_Transfers_McCrary.csv') %>%
-  filter(abs(Income_Centered) <= .02) %>%
+  dplyr::filter(abs(Income_Centered) <= .02) %>%
   mutate(inc_bins = cut(Income_Centered, breaks = .02*(-29:29)/29)) %>%
   group_by(inc_bins) %>%
   summarize(N = n())
@@ -1002,13 +1040,14 @@ tb <- read.csv(text = 'x,y
 522.5617523260966, 6.573514971789063
 ')
 tb <- tb %>%
-  filter(x > -500 & x < 500 & !(x == 0.9539765175011325)) %>%
+  dplyr::filter(x > -500 & x < 500 & !(x == 0.9539765175011325)) %>%
   mutate(x = x*10) %>%
-  filter(y > 6.6 & y < 6.93)
+  dplyr::filter(y > 6.6 & y < 6.93)
 ggplot(tb, aes(x = x, y = y)) + geom_point() +
   geom_vline(aes(xintercept = 0), linetype = 'dashed') + 
   labs(x = 'Regular Earnings, Relative to Cutoff',
-       y = 'Log Weekly Benefit Amount') + 
+       y = 'Log Weekly Benefit Amount',
+       caption = "Copyright ? 1999-2021 John Wiley & Sons, Inc. All rights reserved.\nModified slightly from original.") + 
   theme_pubr() +
   theme(text = element_text(family = 'Garamond', size = 14))
 ggsave('bana_first_stage.pdf', width = 6, height = 5,device=cairo_pdf)
@@ -1565,15 +1604,17 @@ tb1 <- read.csv(text = 'x,y
 5201.972010178117, 2.3455014953527002
 5201.972010178117, 2.343241657389737
 5258.428753180662, 2.333957485402334') %>%
-  filter(x > -5000 & x < 5000 & !(x == -6.162531806615334) & y < 2.44 & y > 2.34)
+  dplyr::filter(x > -5000 & x < 5000 & !(x == -6.162531806615334) & y < 2.44 & y > 2.34)
 p1 <- ggplot(tb1, aes(x = x, y = y, group = x > 0)) + 
   geom_point() +
   geom_smooth(se = FALSE, method = 'lm', color = 'black') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed') + 
-  labs(x = 'Log Duration of Family Leave',
-       y = 'Log Weekly Benefit Amount') + 
+  labs(x = 'Regular Earnings - Cutoff',
+       y = 'Log Duration of Family Leave',
+       caption =  '\n') + 
   theme_pubr() +
-  theme(text = element_text(family = 'Garamond', size = 14))
+  theme(text = element_text(family = 'Garamond', size = 14),
+        plot.caption = element_text(size = 9))
 
 tb2 <- read.csv(text = 'x,y
                 -5935.0984766132215, 0.26623465473616076
@@ -2166,15 +2207,17 @@ tb2 <- read.csv(text = 'x,y
 5183.440529033427, 0.19544041550818664
 5239.718271582571, 0.18692300898751707
 ') %>%
-  filter(x > -5000 & x < 5000 & !(x == -1.1465033064596355) & y > .1921 & y < .288)
+  dplyr::filter(x > -5000 & x < 5000 & !(x == -1.1465033064596355) & y > .1921 & y < .288)
 p2 <- ggplot(tb2, aes(x = x, y = y, group = x > 0)) + 
   geom_point() +
   geom_smooth(se = FALSE, method = 'lm', color = 'black') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed') + 
-  labs(x = 'Log Duration of Family Leave',
-       y = 'Proportion Claiming Leave Again') + 
+  labs(x = 'Regular Earnings - Cutoff',
+       y = 'Proportion Claiming Leave Again',
+       caption ="Copyright © 1999-2021 John Wiley & Sons, Inc. All rights reserved.\nStyle of both figures modified from original.") + 
   theme_pubr() +
-  theme(text = element_text(family = 'Garamond', size = 14))
+  theme(text = element_text(family = 'Garamond', size = 14),
+        plot.caption = element_text(size = 9))
 
 plot_grid(p1,p2)
 ggsave('bana_outcomes.pdf',width = 7, height = 3.5, units = 'in', device = cairo_pdf)
