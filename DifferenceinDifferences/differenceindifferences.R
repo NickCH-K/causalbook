@@ -8,6 +8,7 @@
   library(modelsummary)
   library(fixest)
 }
+library(extrafont)
 
 # Snow table
 tb <- tibble(`Region Supplier` = c('Non-Lambeth Only (Dirty)','Lambeth + Others (Mix Dirty and Clean)'),
@@ -377,8 +378,8 @@ p1 <- ggplot(d, aes(x = date, y = y, linetype = Type, shape = Type)) +
   scale_x_date(labels = function(x) paste0(month.abb[month(x)],' ', str_sub(year(x),3,4)), 
                breaks = ymd('2007-02-01') + years(0:3),
                limits = c(min(d$date), max(d$date) + months(6))) +
-  labs(x = 'Month', y = 'Average Modification Rate') +
-  guides(linetype = FALSE, shape = FALSE) +
+  labs(x = 'Month', y = 'Average Modification Rate', caption = '') +
+  guides(linetype = 'none', shape = 'none') +
   theme_pubr() + 
   theme(text = element_text(family = 'Garamond',
                             size = 14))
@@ -472,7 +473,7 @@ p2 <- ggplot(d2, aes(x = date, y = y, linetype = Type, shape = Type)) +
   scale_x_date(labels = function(x) paste0(month.abb[month(x)],' ', str_sub(year(x),3,4)), 
                breaks = ymd('2007-02-01') + years(0:3),
                limits = c(min(d$date), max(d$date) + months(6))) +
-  labs(x = 'Month', y = 'Foreclosure Filing Rate') +
+  labs(x = 'Month', y = 'Foreclosure Filing Rate', caption = 'Copyright: Elsevier. Minor changes from original.') +
   guides(linetype = FALSE, shape = FALSE) +
   theme_pubr() + 
   theme(text = element_text(family = 'Garamond',
